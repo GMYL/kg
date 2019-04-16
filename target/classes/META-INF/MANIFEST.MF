@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Implementation-Title: kg
+Implementation-Version: 1.0.0
+Built-By: Administrator
+Implementation-Vendor-Id: hb
+Build-Jdk: 1.8.0_152
+Implementation-URL: https://projects.spring.io/spring-boot/#/spring-bo
+ ot-starter-parent/kg
+Created-By: Maven Integration for Eclipse
+Implementation-Vendor: huaban
+
