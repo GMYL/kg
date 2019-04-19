@@ -108,17 +108,13 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                                                                HBGraphLinkType.TYPE.getName())),
                                          HBGraphLink.class);
                 }
-                int insertSize = 400;
+                int insertSize = 1000;
                 HashMap<String, HBGraphLaw> insertLawMap = new HashMap<>(insertSize * 2); // 每次插入1000条，但考虑到0.75的扩展问题
                 HashMap<String, HBGraphLink> insertLinks = new HashMap<>(insertSize * 10);
                 while (itr.hasNext()) {
                     HBLawBasic law = itr.next();
                     // 1、先转存节点
                     lawToGraph(law, insertLawMap, insertLinks);
-                    System.out.println(insertLawMap.size());
-                    if(insertLawMap.size()==400) {
-                        System.out.println(insertLawMap.size());
-                    }
                     if (insertLawMap.size() > insertSize) {
                         if (!clearAll) {
                             // 如果没有做过按照key进行清空，这里要进行清空
