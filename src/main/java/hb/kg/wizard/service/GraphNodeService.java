@@ -63,8 +63,8 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
     public HBGraphWordWithLink getNodeAndLinkByIdList(List<String> ids) {
         // 先获取所有的边
         Collection<HBGraphLink> links = graphLinkDao.findAllLinksByNodes(ids,
-                                                                         HBGraphLinkType.SYNONYM.getName(),
-                                                                         HBGraphLinkType.PARENT.getName());
+                                                                         HBGraphLinkType.ATTRIBUTE.getName(),
+                                                                         HBGraphLinkType.TYPE.getName());
         // 提取所有边对应的所有节点
         HashSet<String> nameset = new HashSet<>();
         nameset.addAll(ids);
@@ -76,7 +76,7 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         }
         // 统一获取这些节点
         Collection<HBGraphBaseNode> words = graphNodeDao.findAllByType(nameset,
-                                                                       HBGraphNodeType.WORD.getName());
+                                                                       HBGraphNodeType.LAW.getName());
         return new HBGraphWordWithLink(words, links);
     }
 

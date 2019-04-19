@@ -51,6 +51,10 @@ public class UserEditBController extends BaseBeanCRUDController<HBUserEdit> {
     public ResponseBean get(@PathVariable("id") String id) {
         return super.get(id);
     }
+    @RequestMapping(value = "/query", method = { RequestMethod.POST })
+    public ResponseBean query(@RequestBody HBUserEdit object) {
+        return super.query(object);
+    }
 
     @Override
     protected HBUserEdit prepareUpdate(HBUserEdit user,

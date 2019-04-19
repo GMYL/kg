@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +36,11 @@ public class RoleBController extends BaseCRUDController<HBRole> {
     @Override
     protected BaseCRUDService<HBRole> getService() {
         return roleService;
+    }
+    
+    @RequestMapping(value = "/query", method = { RequestMethod.POST })
+    public ResponseBean query(@RequestBody HBRole object) {
+        return super.query(object);
     }
 
     /**

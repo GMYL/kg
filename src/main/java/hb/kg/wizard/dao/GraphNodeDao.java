@@ -25,7 +25,7 @@ public class GraphNodeDao extends BaseMongoDao<HBGraphBaseNode> {
             if (nodetype != null && nodetype.length > 0) {
                 query.addCriteria(Criteria.where("type").in(nodetype));
             }
-            query.addCriteria(Criteria.where("id").in(ids));
+            query.addCriteria(Criteria.where("word").in(ids));
             return mongoTemplate.find(query, HBGraphBaseNode.class);
         } else {
             return null;
