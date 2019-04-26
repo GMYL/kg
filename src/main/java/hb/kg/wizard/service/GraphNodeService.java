@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 
 import hb.kg.common.dao.BaseMongoDao;
 import hb.kg.common.service.BaseCRUDService;
-import hb.kg.common.util.encrypt.MD5Util;
 import hb.kg.common.util.http.HttpClientUtil;
 import hb.kg.common.util.json.JSONArray;
 import hb.kg.common.util.json.JSONObject;
@@ -192,7 +191,7 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         lawLinkName.setType(HBGraphLinkType.ATTRIBUTE.getName());
         lawLinkName.setStart(law.getId());
         lawLinkName.setEnd(law.getName());
-        lawLinkName.setNature("name");
+        lawLinkName.setNature("标题");
         lawLinkName.prepareHBBean();
         insertLinks.put(lawLinkName.getEncrypt(), lawLinkName);
         // id与法规号联系
@@ -200,7 +199,7 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         lawLinkNo.setType(HBGraphLinkType.ATTRIBUTE.getName());
         lawLinkNo.setStart(law.getId());
         lawLinkNo.setEnd(law.getNo());
-        lawLinkName.setNature("no");
+        lawLinkNo.setNature("发布文号");
         lawLinkNo.prepareHBBean();
         insertLinks.put(lawLinkNo.getEncrypt(), lawLinkNo);
         // id与发文时间联系
@@ -208,7 +207,7 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         lawLinkDate.setType(HBGraphLinkType.ATTRIBUTE.getName());
         lawLinkDate.setStart(law.getId());
         lawLinkDate.setEnd(date);
-        lawLinkName.setNature("date");
+        lawLinkDate.setNature("发布日期");
         lawLinkDate.prepareHBBean();
         insertLinks.put(lawLinkDate.getEncrypt(), lawLinkDate);
         // id与分类联系
@@ -216,7 +215,7 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         lawLinkExcelType.setType(HBGraphLinkType.TYPE.getName());
         lawLinkExcelType.setStart(law.getId());
         lawLinkExcelType.setEnd(law.getExcelType());
-        lawLinkName.setNature("excelType");
+        lawLinkExcelType.setNature("所属类别");
         lawLinkExcelType.prepareHBBean();
         insertLinks.put(lawLinkExcelType.getEncrypt(), lawLinkExcelType);
     }

@@ -45,4 +45,15 @@ public class HBGraphLaw extends HBGraphBaseNode implements Serializable {
         law.prepareHBBean();
         return law;
     }
+
+    public static HBGraphLaw fromBaseNode(HBGraphBaseNode src)
+            throws InstantiationException, IllegalAccessException {
+        HBGraphLaw newObj = new HBGraphLaw();
+        newObj.setId(src.getId());
+        newObj.setWeight(src.getWeight());
+        newObj.setType(src.getType());
+        newObj.setWord(src.getWord());
+        newObj.setNature(src.getNature());
+        return newObj;
+    }
 }

@@ -1,6 +1,7 @@
 package hb.kg.wizard.bean.mongo;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import hb.kg.common.bean.mongo.BaseMgBean;
@@ -21,6 +22,11 @@ public class HBGraphBaseNode extends BaseMgBean<HBGraphBaseNode> {
     // 注意词本身的连接性关系不会在词内部进行保存
     // 关系单独保存，关系内部对词进行一次索引，保证查询的时候按照关系的全局索引查询即可
     // 也就是说，每个节点是独立的，节点的存储本身不涉及边的存储
+    
+    @Transient
+    private String word; // 实体
+    @Transient
+    private String nature;// 属性
 
     // 节点的id号不再自动生成，必须手动生成
     @Override
