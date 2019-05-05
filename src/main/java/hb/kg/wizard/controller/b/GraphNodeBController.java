@@ -19,7 +19,6 @@ import hb.kg.common.service.BaseCRUDService;
 import hb.kg.wizard.bean.enums.HBGraphNodeType;
 import hb.kg.wizard.bean.mongo.HBGraphBaseNode;
 import hb.kg.wizard.bean.mongo.HBGraphLaw;
-import hb.kg.wizard.service.GraphClueService;
 import hb.kg.wizard.service.GraphLinkService;
 import hb.kg.wizard.service.GraphNodeService;
 import io.swagger.annotations.Api;
@@ -35,8 +34,6 @@ public class GraphNodeBController extends BaseCRUDController<HBGraphBaseNode> {
     private GraphNodeService graphNodeService;
     @Autowired
     private GraphLinkService graphLinkService;
-    @Autowired
-    private GraphClueService graphClueService;
 
     @Override
     protected BaseCRUDService<HBGraphBaseNode> getService() {
@@ -126,10 +123,10 @@ public class GraphNodeBController extends BaseCRUDController<HBGraphBaseNode> {
                                             @RequestParam("level") Integer level) {
         ResponseBean responseBean = getReturn();
         if (StringUtils.isNotBlank(id)) {
-            // responseBean.setData(graphNodeService.getNodeAndLinksById(id,
-            // level != null && level > 0
-            // ? level
-            // : 1));
+            responseBean.setData(graphNodeService.getNodeAndLinksById(id,
+                                                                      level != null && level > 0
+                                                                              ? level
+                                                                              : 1));
         }
         return returnBean(responseBean);
     }

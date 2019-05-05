@@ -41,7 +41,7 @@ public class HBGraphLink extends BaseMgBean<HBGraphLink> implements Serializable
         super.prepareHBBean();
         id = id == null ? IDUtil.generateRandomKey() : id;
         encrypt = encrypt == null ? MD5Util.getRandomMD5Code(start + end) : encrypt;
-        direct = direct == null ? HBGraphLinkDirect.UNDIRECTED.getIndex() : direct;
+        direct = direct == null ? HBGraphLinkDirect.DIRECTED.getIndex() : direct;
         weight = weight == null ? 1.0 : weight;
     }
 

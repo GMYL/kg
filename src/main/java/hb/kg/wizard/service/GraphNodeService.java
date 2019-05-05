@@ -11,7 +11,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.annotation.Resource;
 
@@ -30,7 +29,7 @@ import hb.kg.common.util.json.JSONArray;
 import hb.kg.common.util.json.JSONObject;
 import hb.kg.common.util.set.HBStringUtil;
 import hb.kg.common.util.time.TimeUtil;
-import hb.kg.law.bean.http.HBLawBasic;
+import hb.kg.law.bean.mongo.HBLaw;
 import hb.kg.law.dao.LawDao;
 import hb.kg.wizard.bean.enums.HBGraphLinkType;
 import hb.kg.wizard.bean.enums.HBGraphNodeType;
@@ -79,8 +78,51 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         return new HBGraphWordWithLink(words, links);
     }
 
+    /**
+     * 按照一个节点查找它的临边和对应的点
+     */
+    public HBGraphWordWithLink getNodeAndLinksById(String id,
+                                                   int level) {
+        // 先定义最终的边
+        HashMap<String, HBGraphLink> linkMap = new HashMap<>();
+        HashMap<String, HBGraphBaseNode> nodeMap = new HashMap<>();
+        final HashSet<String> nameset = new HashSet<>();
+        nameset.add(id);
+        for (int i = 0; i < level; i++) {
+            Collection<HBGraphLink> links = graphLinkDao.findAllLinksByNodes(nameset);
+            if (CollectionUtils.isNotEmpty(links)) {
+                links.forEach(link -> {
+                    linkMap.put(link.getId(), link);
+                });
+            }
+            if (CollectionUtils.isNotEmpty(links)) {
+                links.forEach(link -> {
+                    if (!nodeMap.containsKey(link.getStart())) {
+                        nameset.add(link.getStart());
+                    }
+                    if (!nodeMap.containsKey(link.getEnd())) {
+                        nameset.add(link.getEnd());
+                    }
+                });
+            }
+            // 统一获取这些节点
+            Query query = new Query();
+            // query.addCriteria(Criteria.where("type").in("word"));
+            query.addCriteria(Criteria.where("word").in(nameset));
+            Collection<HBGraphLaw> words = mongoTemplate.find(query, HBGraphLaw.class);
+            if (CollectionUtils.isNotEmpty(words)) {
+                words.forEach(word -> {
+                    nodeMap.put(word.getWord(), word);
+                });
+            }
+            nameset.clear();
+        }
+        return new HBGraphWordWithLink(nodeMap.values(), linkMap.values());
+    }
+
     // 读写锁
-    private ReentrantReadWriteLock restoreRobotDictionaryLock = new ReentrantReadWriteLock();
+    // private ReentrantReadWriteLock restoreRobotDictionaryLock = new
+    // ReentrantReadWriteLock();
     // 上传进度
     private AtomicInteger RestoreInProgress = new AtomicInteger(100);
 
@@ -93,9 +135,9 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
      */
     public String loadLawDataIntoGraph(boolean clearAll) {
         StringBuilder result = new StringBuilder();
-        CloseableIterator<HBLawBasic> itr = mongoTemplate.stream(Query.query(Criteria.where("state")
-                                                                                     .is(true)),
-                                                                 HBLawBasic.class);
+        CloseableIterator<HBLaw> itr = mongoTemplate.stream(Query.query(Criteria.where("state")
+                                                                                .is(true)),
+                                                            HBLaw.class);
         try {
             do {
                 if (clearAll) {
@@ -111,7 +153,7 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                 HashMap<String, HBGraphLaw> insertLawMap = new HashMap<>(insertSize * 2); // 每次插入1000条，但考虑到0.75的扩展问题
                 HashMap<String, HBGraphLink> insertLinks = new HashMap<>(insertSize * 10);
                 while (itr.hasNext()) {
-                    HBLawBasic law = itr.next();
+                    HBLaw law = itr.next();
                     // 1、先转存节点
                     lawToGraph(law, insertLawMap, insertLinks);
                     if (insertLawMap.size() > insertSize) {
@@ -157,67 +199,142 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         return result.toString();
     }
 
-    public void lawToGraph(HBLawBasic law,
+    public void lawToGraph(HBLaw law,
                            HashMap<String, HBGraphLaw> insertLawMap,
                            HashMap<String, HBGraphLink> insertLinks) {
-        String date;
-        if (law.getDate() != null) {
-            date = TimeUtil.getStringFromFreq(law.getDate(), "day");
-        } else {
-            date = "未找到相关信息";
+        JSONObject json = (JSONObject) JSONObject.toJSON(law);
+        for (String str : json.keySet()) {
+            if (json.get(str) != null) {
+                HBGraphLaw graphLaw = new HBGraphLaw();
+                graphLaw = HBGraphLaw.genGraphLaw(law, str);
+                HBGraphLink lawLink = new HBGraphLink();
+                lawLink.setNature(str);
+                switch (str) {
+                case "id":// id不建立联系
+                    graphLaw.setWord(json.getString(str));
+                    break;
+                case "excelType":// 分类
+                    graphLaw.setWord(json.getString(str));
+                    lawLink.setStart(law.getId());
+                    lawLink.setEnd(json.getString(str));
+                    lawLink.setType(HBGraphLinkType.TYPE.getName());
+                    break;
+                case "contents":// 内容
+                    graphLaw.setWord(law.getId() + "|内容");
+                    lawLink.setStart(law.getId());
+                    lawLink.setEnd(law.getId() + "|内容");
+                    lawLink.setType(HBGraphLinkType.ATTRIBUTE.getName());
+                    break;
+                case "attaches":// 相关文件
+                    JSONArray attaches=  json.getJSONArray(str);
+                    for(int i=0;i<attaches.size();i++){
+                        String s= attaches.getString(i);
+                        lawLink.setStart(law.getId());
+                        lawLink.setEnd(s);
+                        lawLink.setType(HBGraphLinkType.ATTRIBUTE.getName());
+                        lawLink.prepareHBBean();
+                        insertLinks.put(lawLink.getEncrypt(), lawLink);
+                    }
+                    break;
+                case "date":
+                    graphLaw.setWord(TimeUtil.getStringFromFreq(json.getDate(str), "day"));
+                    lawLink.setStart(law.getId());
+                    lawLink.setEnd(TimeUtil.getStringFromFreq(json.getDate(str), "day"));
+                    lawLink.setType(HBGraphLinkType.ATTRIBUTE.getName());
+                    break;
+                case "state":// 法规有效性，后台判断
+                case "links":// 文内链接
+                case "linkReplaces":// 文内链接替换项
+                case "annexes":// 附件
+                case "sequence":// 排序值
+                case "pictures":// 图片集
+                case "from"://法规原文
+                case "alias"://别名
+                case "timeout"://
+                case "asc"://
+                case "page"://
+                case "sortKey"://
+                case "autoSave"://
+                case "vn"://
+                    break;
+                default:
+                    graphLaw.setWord(json.getString(str).length() > 150
+                            ? json.getString(str).substring(0, 100)
+                            : json.getString(str));
+                    lawLink.setStart(law.getId());
+                    lawLink.setEnd(json.getString(str).length() > 150
+                            ? json.getString(str).substring(0, 100)
+                            : json.getString(str));
+                    lawLink.setType(HBGraphLinkType.ATTRIBUTE.getName());
+                    break;
+                }
+                if (HBStringUtil.isNotBlank(graphLaw.getWord())) {
+                    insertLawMap.put(graphLaw.getWord(), graphLaw);
+                }
+                if (HBStringUtil.isNotBlank(lawLink.getEnd())) {
+                    lawLink.prepareHBBean();
+                    insertLinks.put(lawLink.getEncrypt(), lawLink);
+                }
+            }
         }
-        // 实体id
-        HBGraphLaw graphLawId = HBGraphLaw.genGraphLaw(law, "lawId");
-        graphLawId.setWord(law.getId());
-        insertLawMap.put(graphLawId.getId(), graphLawId);
-        // 实体标题
-        HBGraphLaw graphLawName = HBGraphLaw.genGraphLaw(law, "name");
-        graphLawName.setWord(law.getName());
-        insertLawMap.put(graphLawName.getWord(), graphLawName);
-        // 实体法规号
-        HBGraphLaw graphLawNo = HBGraphLaw.genGraphLaw(law, "no");
-        graphLawNo.setWord(law.getNo());
-        insertLawMap.put(graphLawNo.getWord(), graphLawNo);
-        // 实体发文时间
-        HBGraphLaw graphLawDate = HBGraphLaw.genGraphLaw(law, "date");
-        graphLawDate.setWord(date);
-        insertLawMap.put(graphLawDate.getWord(), graphLawDate);
-        // 实体类别
-        HBGraphLaw graphLawExcelType = HBGraphLaw.genGraphLaw(law, "excelType");
-        graphLawExcelType.setWord(law.getExcelType());
-        insertLawMap.put(graphLawExcelType.getWord(), graphLawExcelType);
-        // id与标题联系
-        HBGraphLink lawLinkName = new HBGraphLink();
-        lawLinkName.setType(HBGraphLinkType.ATTRIBUTE.getName());
-        lawLinkName.setStart(law.getId());
-        lawLinkName.setEnd(law.getName());
-        lawLinkName.setNature("标题");
-        lawLinkName.prepareHBBean();
-        insertLinks.put(lawLinkName.getEncrypt(), lawLinkName);
-        // id与法规号联系
-        HBGraphLink lawLinkNo = new HBGraphLink();
-        lawLinkNo.setType(HBGraphLinkType.ATTRIBUTE.getName());
-        lawLinkNo.setStart(law.getId());
-        lawLinkNo.setEnd(law.getNo());
-        lawLinkNo.setNature("发布文号");
-        lawLinkNo.prepareHBBean();
-        insertLinks.put(lawLinkNo.getEncrypt(), lawLinkNo);
-        // id与发文时间联系
-        HBGraphLink lawLinkDate = new HBGraphLink();
-        lawLinkDate.setType(HBGraphLinkType.ATTRIBUTE.getName());
-        lawLinkDate.setStart(law.getId());
-        lawLinkDate.setEnd(date);
-        lawLinkDate.setNature("发布日期");
-        lawLinkDate.prepareHBBean();
-        insertLinks.put(lawLinkDate.getEncrypt(), lawLinkDate);
-        // id与分类联系
-        HBGraphLink lawLinkExcelType = new HBGraphLink();
-        lawLinkExcelType.setType(HBGraphLinkType.TYPE.getName());
-        lawLinkExcelType.setStart(law.getId());
-        lawLinkExcelType.setEnd(law.getExcelType());
-        lawLinkExcelType.setNature("所属类别");
-        lawLinkExcelType.prepareHBBean();
-        insertLinks.put(lawLinkExcelType.getEncrypt(), lawLinkExcelType);
+        // String date;
+        // if (law.getDate() != null) {
+        // date = TimeUtil.getStringFromFreq(law.getDate(), "day");
+        // } else {
+        // date = "未找到相关信息";
+        // }
+        // // 实体id
+        // HBGraphLaw graphLawId = HBGraphLaw.genGraphLaw(law, "lawId");
+        // graphLawId.setWord(law.getId());
+        // insertLawMap.put(graphLawId.getId(), graphLawId);
+        // // 实体标题
+        // HBGraphLaw graphLawName = HBGraphLaw.genGraphLaw(law, "name");
+        // graphLawName.setWord(law.getName());
+        // insertLawMap.put(graphLawName.getWord(), graphLawName);
+        // // 实体法规号
+        // HBGraphLaw graphLawNo = HBGraphLaw.genGraphLaw(law, "no");
+        // graphLawNo.setWord(law.getNo());
+        // insertLawMap.put(graphLawNo.getWord(), graphLawNo);
+        // // 实体发文时间
+        // HBGraphLaw graphLawDate = HBGraphLaw.genGraphLaw(law, "date");
+        // graphLawDate.setWord(date);
+        // insertLawMap.put(graphLawDate.getWord(), graphLawDate);
+        // // 实体类别
+        // HBGraphLaw graphLawExcelType = HBGraphLaw.genGraphLaw(law, "excelType");
+        // graphLawExcelType.setWord(law.getExcelType());
+        // insertLawMap.put(graphLawExcelType.getWord(), graphLawExcelType);
+        // // id与标题联系
+        // HBGraphLink lawLinkName = new HBGraphLink();
+        // lawLinkName.setType(HBGraphLinkType.ATTRIBUTE.getName());
+        // lawLinkName.setStart(law.getId());
+        // lawLinkName.setEnd(law.getName());
+        // lawLinkName.setNature("标题");
+        // lawLinkName.prepareHBBean();
+        // insertLinks.put(lawLinkName.getEncrypt(), lawLinkName);
+        // // id与法规号联系
+        // HBGraphLink lawLinkNo = new HBGraphLink();
+        // lawLinkNo.setType(HBGraphLinkType.ATTRIBUTE.getName());
+        // lawLinkNo.setStart(law.getId());
+        // lawLinkNo.setEnd(law.getNo());
+        // lawLinkNo.setNature("发布文号");
+        // lawLinkNo.prepareHBBean();
+        // insertLinks.put(lawLinkNo.getEncrypt(), lawLinkNo);
+        // // id与发文时间联系
+        // HBGraphLink lawLinkDate = new HBGraphLink();
+        // lawLinkDate.setType(HBGraphLinkType.ATTRIBUTE.getName());
+        // lawLinkDate.setStart(law.getId());
+        // lawLinkDate.setEnd(date);
+        // lawLinkDate.setNature("发布日期");
+        // lawLinkDate.prepareHBBean();
+        // insertLinks.put(lawLinkDate.getEncrypt(), lawLinkDate);
+        // // id与分类联系
+        // HBGraphLink lawLinkExcelType = new HBGraphLink();
+        // lawLinkExcelType.setType(HBGraphLinkType.TYPE.getName());
+        // lawLinkExcelType.setStart(law.getId());
+        // lawLinkExcelType.setEnd(law.getExcelType());
+        // lawLinkExcelType.setNature("所属类别");
+        // lawLinkExcelType.prepareHBBean();
+        // insertLinks.put(lawLinkExcelType.getEncrypt(), lawLinkExcelType);
     }
 
     /**

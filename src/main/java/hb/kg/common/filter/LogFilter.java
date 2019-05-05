@@ -22,7 +22,7 @@ public class LogFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain)
             throws ServletException, IOException {
-        Object userid = request.getAttribute("userid");
+//        Object userid = request.getAttribute("userid");
         chain.doFilter(request, response);
     }
 }

@@ -5,7 +5,6 @@ import java.io.Serializable;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import hb.kg.law.bean.http.HBLawBasic;
 import hb.kg.law.bean.mongo.HBLaw;
 import hb.kg.wizard.bean.enums.HBGraphNodeType;
 import lombok.Data;
@@ -35,7 +34,7 @@ public class HBGraphLaw extends HBGraphBaseNode implements Serializable {
     /**
      * 将法规库的法规转变为知识图谱的法规，ID号规则是随机
      */
-    public static HBGraphLaw genGraphLaw(HBLawBasic src,
+    public static HBGraphLaw genGraphLaw(HBLaw src,
                                          String nature) {
         HBGraphLaw law = new HBGraphLaw();
         // law.setWord(src.getName());

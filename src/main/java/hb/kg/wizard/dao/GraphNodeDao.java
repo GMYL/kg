@@ -8,7 +8,6 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
 import hb.kg.common.dao.BaseMongoDao;
-import hb.kg.wizard.bean.enums.HBGraphNodeType;
 import hb.kg.wizard.bean.mongo.HBGraphBaseNode;
 
 /**
