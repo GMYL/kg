@@ -9,6 +9,7 @@ public enum HBGraphLinkType {
     ATTRIBUTE(2, "attribute"), // 属性关系
     CONTENT(3, "content"), // 来自正文的描述
     TYPE(4, "type"), // 分类
+    ITEM(5, "item"), // 条款
     ;
     private Integer index;
     private String name;

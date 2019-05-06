@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,12 +25,14 @@ import org.springframework.stereotype.Service;
 
 import hb.kg.common.dao.BaseMongoDao;
 import hb.kg.common.service.BaseCRUDService;
+import hb.kg.common.util.encrypt.MD5Util;
 import hb.kg.common.util.http.HttpClientUtil;
 import hb.kg.common.util.json.JSONArray;
 import hb.kg.common.util.json.JSONObject;
 import hb.kg.common.util.set.HBStringUtil;
 import hb.kg.common.util.time.TimeUtil;
 import hb.kg.law.bean.mongo.HBLaw;
+import hb.kg.law.bean.mongo.HBLawitem;
 import hb.kg.law.dao.LawDao;
 import hb.kg.wizard.bean.enums.HBGraphLinkType;
 import hb.kg.wizard.bean.enums.HBGraphNodeType;
@@ -62,7 +65,8 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         // 先获取所有的边
         Collection<HBGraphLink> links = graphLinkDao.findAllLinksByNodes(ids,
                                                                          HBGraphLinkType.ATTRIBUTE.getName(),
-                                                                         HBGraphLinkType.TYPE.getName());
+                                                                         HBGraphLinkType.TYPE.getName(),
+                                                                         HBGraphLinkType.ITEM.getName());
         // 提取所有边对应的所有节点
         HashSet<String> nameset = new HashSet<>();
         nameset.addAll(ids);
@@ -141,13 +145,8 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         try {
             do {
                 if (clearAll) {
-                    mongoTemplate.remove(new Query(Criteria.where("type")
-                                                           .is(HBGraphNodeType.LAW.getName())),
-                                         HBGraphLaw.class);
-                    mongoTemplate.remove(new Query(Criteria.where("type")
-                                                           .in(HBGraphLinkType.ATTRIBUTE.getName(),
-                                                               HBGraphLinkType.TYPE.getName())),
-                                         HBGraphLink.class);
+                    mongoTemplate.remove(new Query(),HBGraphLaw.class);
+                    mongoTemplate.remove(new Query(),HBGraphLink.class);
                 }
                 int insertSize = 1000;
                 HashMap<String, HBGraphLaw> insertLawMap = new HashMap<>(insertSize * 2); // 每次插入1000条，但考虑到0.75的扩展问题
@@ -157,15 +156,15 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                     // 1、先转存节点
                     lawToGraph(law, insertLawMap, insertLinks);
                     if (insertLawMap.size() > insertSize) {
-                        if (!clearAll) {
+//                        if (!clearAll) {
                             // 如果没有做过按照key进行清空，这里要进行清空
-                            mongoTemplate.remove(Query.query(Criteria.where("_id")
+                            mongoTemplate.remove(Query.query(Criteria.where("word")
                                                                      .in(insertLawMap.keySet())),
                                                  HBGraphLaw.class);
                             mongoTemplate.remove(Query.query(Criteria.where("encrypt")
                                                                      .in(insertLinks.keySet())),
                                                  HBGraphLink.class);
-                        }
+//                        }
                         // 但是都需要插入
                         mongoTemplate.insertAll(insertLawMap.values());
                         mongoTemplate.insertAll(insertLinks.values());
@@ -175,15 +174,15 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                     }
                 }
                 if (MapUtils.isNotEmpty(insertLawMap)) {
-                    if (!clearAll) {
+//                    if (!clearAll) {
                         // 如果没有做过按照key进行清空，这里要进行清空
-                        mongoTemplate.remove(Query.query(Criteria.where("_id")
+                        mongoTemplate.remove(Query.query(Criteria.where("word")
                                                                  .in(insertLawMap.keySet())),
                                              HBGraphLaw.class);
                         mongoTemplate.remove(Query.query(Criteria.where("encrypt")
                                                                  .in(insertLinks.keySet())),
                                              HBGraphLink.class);
-                    }
+//                    }
                     // 但是都需要插入
                     mongoTemplate.insertAll(insertLawMap.values());
                     mongoTemplate.insertAll(insertLinks.values());
@@ -199,10 +198,28 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         return result.toString();
     }
 
+    /**
+     * 添加itms
+     * @param json
+     * @param law
+     */
+    public void jsonLawAddItems(JSONObject json,
+                                HBLaw law) {
+        List<String> items = new ArrayList<>();
+        Criteria c = Criteria.where("id").regex("^" + law.getId() + ".*");
+        Query query = new Query(c);
+        List<HBLawitem> itemList = mongoTemplate.find(query, HBLawitem.class);
+        for (HBLawitem item : itemList) {
+            items.add(item.getId());
+        }
+        json.put("items", items);
+    }
+
     public void lawToGraph(HBLaw law,
                            HashMap<String, HBGraphLaw> insertLawMap,
                            HashMap<String, HBGraphLink> insertLinks) {
         JSONObject json = (JSONObject) JSONObject.toJSON(law);
+        jsonLawAddItems(json, law);// 添加items
         for (String str : json.keySet()) {
             if (json.get(str) != null) {
                 HBGraphLaw graphLaw = new HBGraphLaw();
@@ -212,6 +229,29 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                 switch (str) {
                 case "id":// id不建立联系
                     graphLaw.setWord(json.getString(str));
+                    break;
+                case "items":// 条款关系建立 在这单独走
+                    JSONArray itemJSONArray = json.getJSONArray(str);
+                    for (int i = 0; i < itemJSONArray.size(); i++) {
+                        String item = itemJSONArray.getString(i); // O000100100
+                        // 添加节点
+                        String itemSub = item.substring(5, 8);// 001
+                        if (!"000".equals(itemSub)
+                                && item.substring(item.length() - 1, item.length()).equals("0")) {
+                            HBGraphLaw graphLawItem = new HBGraphLaw();
+                            graphLawItem = HBGraphLaw.genGraphLaw(law, str);
+                            HBGraphLink lawLinkItem = new HBGraphLink();
+                            graphLawItem.setWord(item);
+                            lawLinkItem.setStart(law.getId());
+                            lawLinkItem.setEnd(item);
+                            lawLinkItem.setNature("条款第" + itemSub + "条");
+                            lawLinkItem.setType(HBGraphLinkType.ITEM.getName());
+                            lawLinkItem.setEncrypt(MD5Util.getRandomMD5Code(law.getId() + item));
+                            lawLinkItem.prepareHBBean();
+                            insertLawMap.put(graphLawItem.getWord(), graphLawItem);
+                            insertLinks.put(lawLinkItem.getEncrypt(), lawLinkItem);
+                        }
+                    }
                     break;
                 case "excelType":// 分类
                     graphLaw.setWord(json.getString(str));
@@ -226,14 +266,17 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                     lawLink.setType(HBGraphLinkType.ATTRIBUTE.getName());
                     break;
                 case "attaches":// 相关文件
-                    JSONArray attaches=  json.getJSONArray(str);
-                    for(int i=0;i<attaches.size();i++){
-                        String s= attaches.getString(i);
-                        lawLink.setStart(law.getId());
-                        lawLink.setEnd(s);
-                        lawLink.setType(HBGraphLinkType.ATTRIBUTE.getName());
-                        lawLink.prepareHBBean();
-                        insertLinks.put(lawLink.getEncrypt(), lawLink);
+                    JSONArray attaches = json.getJSONArray(str);
+                    for (int i = 0; i < attaches.size(); i++) {
+                        String s = attaches.getString(i);
+                        HBGraphLink lawLinkAttaches = new HBGraphLink();
+                        lawLinkAttaches.setNature(str);
+                        lawLinkAttaches.setStart(law.getId());
+                        lawLinkAttaches.setEnd(s);
+                        lawLinkAttaches.setType(HBGraphLinkType.ATTRIBUTE.getName());
+                        lawLinkAttaches.setEncrypt(MD5Util.getRandomMD5Code(law.getId() + s));
+                        lawLinkAttaches.prepareHBBean();
+                        insertLinks.put(lawLinkAttaches.getEncrypt(), lawLinkAttaches);
                     }
                     break;
                 case "date":
@@ -248,8 +291,8 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                 case "annexes":// 附件
                 case "sequence":// 排序值
                 case "pictures":// 图片集
-                case "from"://法规原文
-                case "alias"://别名
+                case "from":// 法规原文
+                case "alias":// 别名
                 case "timeout"://
                 case "asc"://
                 case "page"://
