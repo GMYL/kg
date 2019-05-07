@@ -11,6 +11,7 @@ import hb.kg.common.bean.http.ResponseBean;
 import hb.kg.common.controller.BaseCRUDController;
 import hb.kg.common.service.BaseCRUDService;
 import hb.kg.system.bean.mongo.HBModule;
+import hb.kg.system.bean.mongo.HBModuleCategory;
 import hb.kg.system.service.ModuleService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -30,6 +31,10 @@ public class ModuleBController extends BaseCRUDController<HBModule> {
     @Override
     protected BaseCRUDService<HBModule> getService() {
         return moduleService;
+    }
+    @RequestMapping(value = "", method = { RequestMethod.PUT })
+    public ResponseBean insert(@RequestBody HBModule object) {
+        return super.insert(object);
     }
 
     @RequestMapping(value = "/query", method = { RequestMethod.POST })

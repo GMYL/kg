@@ -1,5 +1,7 @@
 package hb.kg.system.controller.b;
 
+import java.util.Map;
+
 import javax.annotation.Resource;
 
 import org.apache.commons.lang3.StringUtils;
@@ -14,6 +16,7 @@ import hb.kg.common.bean.enums.ApiCode;
 import hb.kg.common.bean.http.ResponseBean;
 import hb.kg.common.controller.BaseCRUDController;
 import hb.kg.common.service.BaseCRUDService;
+import hb.kg.content.bean.mongo.HBArticleCategory;
 import hb.kg.system.bean.mongo.HBModuleCategory;
 import hb.kg.system.dao.ModuleCategoryDao;
 import hb.kg.system.service.ModuleCategoryService;
@@ -57,7 +60,8 @@ public class ModuleBCategoryController extends BaseCRUDController<HBModuleCatego
     @RequestMapping(value = "/init", method = { RequestMethod.GET })
     public ResponseBean getInitSysTags() {
         ResponseBean responseBean = getReturn();
-        responseBean.setData(moduleCategoryService.dao().findAll());
+        Map<String, HBModuleCategory> initData = moduleCategoryDao.getAllTree();
+        responseBean.setData(initData);
         return returnBean(responseBean);
     }
 

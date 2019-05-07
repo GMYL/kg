@@ -37,10 +37,20 @@ public class RoleBController extends BaseCRUDController<HBRole> {
     protected BaseCRUDService<HBRole> getService() {
         return roleService;
     }
-    
+
+    @RequestMapping(value = "", method = { RequestMethod.PUT })
+    public ResponseBean insert(@RequestBody HBRole object) {
+        return super.insert(object);
+    }
+
     @RequestMapping(value = "/query", method = { RequestMethod.POST })
     public ResponseBean query(@RequestBody HBRole object) {
         return super.query(object);
+    }
+
+    @RequestMapping(value = "/update", method = { RequestMethod.POST })
+    public ResponseBean update(@RequestBody HBRole object) {
+        return super.update(object);
     }
 
     /**
