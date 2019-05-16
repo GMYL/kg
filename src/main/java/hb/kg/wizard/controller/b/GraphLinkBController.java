@@ -58,15 +58,15 @@ public class GraphLinkBController extends BaseCRUDController<HBGraphLink> {
             responseBean.setCodeAndErrMsg(ApiCode.PARAM_FORMAT_ERROR.getCode(), "没有传入起点和终点");
         } else {
             // 强制让连线id为一个节点指向另一个节点
-            if (mongoTemplate.exists(Query.query(Criteria.where("id")
-                                                         .in(link.generateKey(),
-                                                             link.generateKeyReverse())),
+            if (mongoTemplate.exists(Query.query(Criteria.where("encrypt")
+                                                         .in(link.generateEncrypt(link.getStart(),
+                                                                                  link.getEnd()),
+                                                             link.generateEncrypt(link.getEnd(),
+                                                                                  link.getStart()))),
                                      HBGraphLink.class)) {
                 responseBean.setCodeAndErrMsg(ApiCode.PARAM_CONTENT_ERROR.getCode(),
                                               "两个节点之间的连线已存在");
-            } else {
-                link.setId(link.generateKey());
-            }
+            } 
         }
         return super.prepareInsert(link, responseBean);
     }

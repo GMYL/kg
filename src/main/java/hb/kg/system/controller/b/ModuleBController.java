@@ -11,7 +11,6 @@ import hb.kg.common.bean.http.ResponseBean;
 import hb.kg.common.controller.BaseCRUDController;
 import hb.kg.common.service.BaseCRUDService;
 import hb.kg.system.bean.mongo.HBModule;
-import hb.kg.system.bean.mongo.HBModuleCategory;
 import hb.kg.system.service.ModuleService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;

@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -40,6 +41,14 @@ public class GraphNodeFController extends BaseCRUDController<HBGraphBaseNode> {
         if (CollectionUtils.isNotEmpty(ids)) {
             responseBean.setData(graphNodeService.getNodeAndLinkByIdList(ids));
         }
+        return returnBean(responseBean);
+    }
+
+    @RequestMapping(value = "/getTermAndRank/{lawId}/{size}", method = { RequestMethod.GET })
+    public ResponseBean getTermAndRank(@PathVariable("lawId") String lawId,
+                                       @PathVariable("size") Integer size) {
+        ResponseBean responseBean = getReturn();
+        responseBean.setData(graphNodeService.getTermAndRank(lawId, size));
         return returnBean(responseBean);
     }
 }

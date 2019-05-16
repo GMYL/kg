@@ -40,9 +40,14 @@ public class HBGraphLink extends BaseMgBean<HBGraphLink> implements Serializable
     public void prepareHBBean() {
         super.prepareHBBean();
         id = id == null ? IDUtil.generateRandomKey() : id;
-        encrypt = encrypt == null ? MD5Util.getRandomMD5Code(start + end) : encrypt;
+        encrypt = encrypt == null ? new String(MD5Util.EncodeByMd5(start + end)) : encrypt;
         direct = direct == null ? HBGraphLinkDirect.DIRECTED.getIndex() : direct;
         weight = weight == null ? 1.0 : weight;
+    }
+
+    public String generateEncrypt(String start,
+                                  String end) {
+        return new String(MD5Util.EncodeByMd5(start + end));
     }
 
     public String generateKey() {

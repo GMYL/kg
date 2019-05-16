@@ -6,17 +6,25 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.annotation.Resource;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -34,6 +42,8 @@ import hb.kg.common.util.time.TimeUtil;
 import hb.kg.law.bean.mongo.HBLaw;
 import hb.kg.law.bean.mongo.HBLawitem;
 import hb.kg.law.dao.LawDao;
+import hb.kg.search.bean.mongo.HBDictionaryWord;
+import hb.kg.search.service.DictionaryWordService;
 import hb.kg.wizard.bean.enums.HBGraphLinkType;
 import hb.kg.wizard.bean.enums.HBGraphNodeType;
 import hb.kg.wizard.bean.http.GraphWordHTTP;
@@ -53,6 +63,8 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
     private GraphLinkDao graphLinkDao;
     @Resource
     private LawDao lawDao;
+    @Autowired
+    private DictionaryWordService dictionaryWordService;
 
     public BaseMongoDao<HBGraphBaseNode> dao() {
         return graphNodeDao;
@@ -145,8 +157,8 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         try {
             do {
                 if (clearAll) {
-                    mongoTemplate.remove(new Query(),HBGraphLaw.class);
-                    mongoTemplate.remove(new Query(),HBGraphLink.class);
+                    mongoTemplate.remove(new Query(), HBGraphLaw.class);
+                    mongoTemplate.remove(new Query(), HBGraphLink.class);
                 }
                 int insertSize = 1000;
                 HashMap<String, HBGraphLaw> insertLawMap = new HashMap<>(insertSize * 2); // 每次插入1000条，但考虑到0.75的扩展问题
@@ -156,15 +168,15 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                     // 1、先转存节点
                     lawToGraph(law, insertLawMap, insertLinks);
                     if (insertLawMap.size() > insertSize) {
-//                        if (!clearAll) {
-                            // 如果没有做过按照key进行清空，这里要进行清空
-                            mongoTemplate.remove(Query.query(Criteria.where("word")
-                                                                     .in(insertLawMap.keySet())),
-                                                 HBGraphLaw.class);
-                            mongoTemplate.remove(Query.query(Criteria.where("encrypt")
-                                                                     .in(insertLinks.keySet())),
-                                                 HBGraphLink.class);
-//                        }
+                        // if (!clearAll) {
+                        // 如果没有做过按照key进行清空，这里要进行清空
+                        mongoTemplate.remove(Query.query(Criteria.where("word")
+                                                                 .in(insertLawMap.keySet())),
+                                             HBGraphLaw.class);
+                        mongoTemplate.remove(Query.query(Criteria.where("encrypt")
+                                                                 .in(insertLinks.keySet())),
+                                             HBGraphLink.class);
+                        // }
                         // 但是都需要插入
                         mongoTemplate.insertAll(insertLawMap.values());
                         mongoTemplate.insertAll(insertLinks.values());
@@ -174,15 +186,15 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                     }
                 }
                 if (MapUtils.isNotEmpty(insertLawMap)) {
-//                    if (!clearAll) {
-                        // 如果没有做过按照key进行清空，这里要进行清空
-                        mongoTemplate.remove(Query.query(Criteria.where("word")
-                                                                 .in(insertLawMap.keySet())),
-                                             HBGraphLaw.class);
-                        mongoTemplate.remove(Query.query(Criteria.where("encrypt")
-                                                                 .in(insertLinks.keySet())),
-                                             HBGraphLink.class);
-//                    }
+                    // if (!clearAll) {
+                    // 如果没有做过按照key进行清空，这里要进行清空
+                    mongoTemplate.remove(Query.query(Criteria.where("word")
+                                                             .in(insertLawMap.keySet())),
+                                         HBGraphLaw.class);
+                    mongoTemplate.remove(Query.query(Criteria.where("encrypt")
+                                                             .in(insertLinks.keySet())),
+                                         HBGraphLink.class);
+                    // }
                     // 但是都需要插入
                     mongoTemplate.insertAll(insertLawMap.values());
                     mongoTemplate.insertAll(insertLinks.values());
@@ -246,7 +258,8 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                             lawLinkItem.setEnd(item);
                             lawLinkItem.setNature("条款第" + itemSub + "条");
                             lawLinkItem.setType(HBGraphLinkType.ITEM.getName());
-                            lawLinkItem.setEncrypt(MD5Util.getRandomMD5Code(law.getId() + item));
+                            lawLinkItem.setEncrypt(new String(MD5Util.EncodeByMd5(law.getId()
+                                    + item)));
                             lawLinkItem.prepareHBBean();
                             insertLawMap.put(graphLawItem.getWord(), graphLawItem);
                             insertLinks.put(lawLinkItem.getEncrypt(), lawLinkItem);
@@ -320,64 +333,123 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
                 }
             }
         }
-        // String date;
-        // if (law.getDate() != null) {
-        // date = TimeUtil.getStringFromFreq(law.getDate(), "day");
-        // } else {
-        // date = "未找到相关信息";
-        // }
-        // // 实体id
-        // HBGraphLaw graphLawId = HBGraphLaw.genGraphLaw(law, "lawId");
-        // graphLawId.setWord(law.getId());
-        // insertLawMap.put(graphLawId.getId(), graphLawId);
-        // // 实体标题
-        // HBGraphLaw graphLawName = HBGraphLaw.genGraphLaw(law, "name");
-        // graphLawName.setWord(law.getName());
-        // insertLawMap.put(graphLawName.getWord(), graphLawName);
-        // // 实体法规号
-        // HBGraphLaw graphLawNo = HBGraphLaw.genGraphLaw(law, "no");
-        // graphLawNo.setWord(law.getNo());
-        // insertLawMap.put(graphLawNo.getWord(), graphLawNo);
-        // // 实体发文时间
-        // HBGraphLaw graphLawDate = HBGraphLaw.genGraphLaw(law, "date");
-        // graphLawDate.setWord(date);
-        // insertLawMap.put(graphLawDate.getWord(), graphLawDate);
-        // // 实体类别
-        // HBGraphLaw graphLawExcelType = HBGraphLaw.genGraphLaw(law, "excelType");
-        // graphLawExcelType.setWord(law.getExcelType());
-        // insertLawMap.put(graphLawExcelType.getWord(), graphLawExcelType);
-        // // id与标题联系
-        // HBGraphLink lawLinkName = new HBGraphLink();
-        // lawLinkName.setType(HBGraphLinkType.ATTRIBUTE.getName());
-        // lawLinkName.setStart(law.getId());
-        // lawLinkName.setEnd(law.getName());
-        // lawLinkName.setNature("标题");
-        // lawLinkName.prepareHBBean();
-        // insertLinks.put(lawLinkName.getEncrypt(), lawLinkName);
-        // // id与法规号联系
-        // HBGraphLink lawLinkNo = new HBGraphLink();
-        // lawLinkNo.setType(HBGraphLinkType.ATTRIBUTE.getName());
-        // lawLinkNo.setStart(law.getId());
-        // lawLinkNo.setEnd(law.getNo());
-        // lawLinkNo.setNature("发布文号");
-        // lawLinkNo.prepareHBBean();
-        // insertLinks.put(lawLinkNo.getEncrypt(), lawLinkNo);
-        // // id与发文时间联系
-        // HBGraphLink lawLinkDate = new HBGraphLink();
-        // lawLinkDate.setType(HBGraphLinkType.ATTRIBUTE.getName());
-        // lawLinkDate.setStart(law.getId());
-        // lawLinkDate.setEnd(date);
-        // lawLinkDate.setNature("发布日期");
-        // lawLinkDate.prepareHBBean();
-        // insertLinks.put(lawLinkDate.getEncrypt(), lawLinkDate);
-        // // id与分类联系
-        // HBGraphLink lawLinkExcelType = new HBGraphLink();
-        // lawLinkExcelType.setType(HBGraphLinkType.TYPE.getName());
-        // lawLinkExcelType.setStart(law.getId());
-        // lawLinkExcelType.setEnd(law.getExcelType());
-        // lawLinkExcelType.setNature("所属类别");
-        // lawLinkExcelType.prepareHBBean();
-        // insertLinks.put(lawLinkExcelType.getEncrypt(), lawLinkExcelType);
+    }
+
+    /**
+     * 返回分数最高的前size个分词结果和对应的rank
+     * @param content
+     * @param size
+     * @return
+     */
+    public JSONObject getTermAndRank(String lawId,
+                                     Integer size) {
+        JSONObject results = new JSONObject();
+        HBLaw law = lawDao.findOne(lawId);
+        if (law != null) {
+            Map<String, Float> map = getTermAndRank(law.getContents());
+//            Map<String, Float> result = new LinkedHashMap<String, Float>();
+            List<Map.Entry<String, Float>> infoIds = new ArrayList<Map.Entry<String, Float>>(map.entrySet());
+            // 排序
+            Collections.sort(infoIds, new Comparator<Map.Entry<String, Float>>() {
+                public int compare(Map.Entry<String, Float> o1,
+                                   Map.Entry<String, Float> o2) {
+                    return (o1.getKey()).toString().compareTo(o2.getKey());
+                }
+            });
+            // for (Map.Entry<String, Float> entry : new MaxHeap<Map.Entry<String,
+            // Float>>(size,
+            // new Comparator<Map.Entry<String, Float>>() {
+            // @Override
+            // public int compare(Map.Entry<String, Float> o1,
+            // Map.Entry<String, Float> o2) {
+            // return o1.getValue()
+            // .compareTo(o2.getValue());
+            // }
+            // }).addAll(map.entrySet())
+            // .toList()) {
+            // result.put(entry.getKey(), entry.getValue());
+            // }
+            results.put("result", infoIds);
+            results.put("lawTitle", law.getName());
+            results.put("lawContent", law.getContents());
+        } else {
+            results.put("msg", "未找到法规");
+        }
+        return results;
+    }
+
+    /**
+     * 阻尼系数（ＤａｍｐｉｎｇＦａｃｔｏｒ），一般取值为0.85
+     */
+    final static float d = 0.85f;
+    /**
+     * 最大迭代次数
+     */
+    public static int max_iter = 200;
+    final static float min_diff = 0.001f;
+
+    public Map<String, Float> getTermAndRank(String content) {
+        List<String> listWord = new ArrayList<>();
+        List<String> listContent = dictionaryWordService.getWordList(content);
+        // 获取词性
+        for (String word : listContent) {
+            // 获取词性
+            HBDictionaryWord dbWords = mongoTemplate.findOne(Query.query(Criteria.where("word")
+                                                                                 .is(word)),
+                                                             HBDictionaryWord.class);
+            // 去除一些属性词
+            if (dbWords != null
+                    && dictionaryWordService.natureDel(dbWords.getWord(), dbWords.getNature())) {
+                listWord.add(word);
+            }
+        }
+        Map<String, Set<String>> words = new TreeMap<String, Set<String>>();
+        Queue<String> que = new LinkedList<String>();
+        for (String w : listWord) {
+            if (!words.containsKey(w)) {
+                words.put(w, new TreeSet<String>());
+            }
+            // 复杂度O(n-1)
+            if (que.size() >= 5) {
+                que.poll();
+            }
+            for (String qWord : que) {
+                if (w.equals(qWord)) {
+                    continue;
+                }
+                // 既然是邻居,那么关系是相互的,遍历一遍即可
+                words.get(w).add(qWord);
+                words.get(qWord).add(w);
+            }
+            que.offer(w);
+        }
+        // System.out.println(words);
+        Map<String, Float> score = new HashMap<String, Float>();
+        for (int i = 0; i < max_iter; ++i) {
+            Map<String, Float> m = new HashMap<String, Float>();
+            float max_diff = 0;
+            for (Map.Entry<String, Set<String>> entry : words.entrySet()) {
+                String key = entry.getKey();
+                Set<String> value = entry.getValue();
+                m.put(key, 1 - d);
+                for (String element : value) {
+                    int size = words.get(element).size();
+                    if (key.equals(element) || size == 0)
+                        continue;
+                    m.put(key,
+                          m.get(key) + d / size
+                                  * (score.get(element) == null ? 0 : score.get(element)));
+                }
+                max_diff = Math.max(max_diff,
+                                    Math.abs(m.get(key)
+                                            - (score.get(key) == null ? 0 : score.get(key))));
+            }
+            score = m;
+            if (max_diff <= min_diff)
+                break;
+        }
+        //
+        return score;
     }
 
     /**

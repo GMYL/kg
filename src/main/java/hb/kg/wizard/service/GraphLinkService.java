@@ -14,6 +14,8 @@ import com.mongodb.client.result.DeleteResult;
 
 import hb.kg.common.dao.BaseMongoDao;
 import hb.kg.common.service.BaseCRUDService;
+import hb.kg.common.util.encrypt.MD5Util;
+import hb.kg.common.util.id.IDUtil;
 import hb.kg.wizard.bean.mongo.HBGraphLink;
 import hb.kg.wizard.dao.GraphLinkDao;
 
@@ -45,9 +47,10 @@ public class GraphLinkService extends BaseCRUDService<HBGraphLink> {
         if (srclink != null) {
             dao().removeOne(id);
             String end = srclink.getEnd();
-            srclink.setId(srclink.getEnd() + "-" + srclink.getStart());
+            srclink.setId(IDUtil.generateRandomKey());
             srclink.setEnd(srclink.getStart());
             srclink.setStart(end);
+            srclink.setEncrypt(srclink.generateEncrypt(srclink.getStart(), srclink.getEnd()));
             return dao().insert(srclink);
         }
         return null;
@@ -58,7 +61,7 @@ public class GraphLinkService extends BaseCRUDService<HBGraphLink> {
      */
     public String deleteAllRelateLinks(List<String> nodeids) {
         if (CollectionUtils.isNotEmpty(nodeids)) {
-            DeleteResult result = mongoTemplate.remove(Query.query(Criteria.where("id")
+            DeleteResult result = mongoTemplate.remove(Query.query(Criteria.where("encrypt")
                                                                            .in(generateAllRelateLinksByNodes(nodeids))),
                                                        HBGraphLink.class);
             return "一共删除了" + result.getDeletedCount() + "条边";
@@ -75,7 +78,7 @@ public class GraphLinkService extends BaseCRUDService<HBGraphLink> {
             for (String node1 : nodeids) {
                 for (String node2 : nodeids) {
                     if (node1 != node2) {
-                        links.add(node1 + "-" + node2);
+                        links.add(new String(MD5Util.EncodeByMd5(node1 + node2)));
                     }
                 }
             }
