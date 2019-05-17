@@ -39,18 +39,12 @@ import hb.kg.search.bean.enums.HBDictionaryExcelType;
 import hb.kg.search.bean.mongo.HBDictionaryStopWord;
 import hb.kg.search.bean.mongo.HBDictionaryWord;
 import hb.kg.search.bean.mongo.HBQuestionStandard;
-import hb.kg.search.dao.mongo.DictionaryStopWordDao;
 import hb.kg.search.dao.mongo.DictionaryWordDao;
-import hb.kg.search.dao.mongo.QuestionStandardDao;
 
 @Service
 public class DictionaryWordService extends BaseCRUDService<HBDictionaryWord> {
     @Resource
     private DictionaryWordDao dictionaryWordDao;
-    @Resource
-    private DictionaryStopWordDao dictionaryStopWordDao;
-    @Resource
-    private QuestionStandardDao questionStandardDao;
 
     @Override
     public BaseDao<HBDictionaryWord> dao() {
