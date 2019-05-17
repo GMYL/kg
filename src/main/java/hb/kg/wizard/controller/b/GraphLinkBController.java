@@ -94,4 +94,5 @@ public class GraphLinkBController extends BaseCRUDController<HBGraphLink> {
         }
         return returnBean(responseBean);
     }
+    
 }

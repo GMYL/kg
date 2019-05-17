@@ -1,6 +1,10 @@
 package hb.kg.wizard.service;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -11,6 +15,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +38,7 @@ import org.springframework.stereotype.Service;
 
 import hb.kg.common.dao.BaseMongoDao;
 import hb.kg.common.service.BaseCRUDService;
+import hb.kg.common.util.algo.nlp.util.MaxHeap;
 import hb.kg.common.util.encrypt.MD5Util;
 import hb.kg.common.util.http.HttpClientUtil;
 import hb.kg.common.util.json.JSONArray;
@@ -335,6 +341,24 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         }
     }
 
+    public void createFileTxt(List<String> ids) {
+        try {
+            File writeName = new File("src/main/resources/download/laws.txt"); // 相对路径，如果没有则要建立一个新的.txt文件
+            writeName.createNewFile(); // 创建新文件,有同名的文件的话直接覆盖
+            try (FileWriter writer = new FileWriter(writeName);
+                    BufferedWriter out = new BufferedWriter(writer)) {
+                for (String id : ids) {
+                    JSONObject results = getTermAndRank(id, 5);
+                    out.write(results.toJSONString());
+                    out.write("\r\n"); // \r\n即为换行
+                }
+                out.flush(); // 把缓存区内容压入文件
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * 返回分数最高的前size个分词结果和对应的rank
      * @param content
@@ -347,31 +371,22 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         HBLaw law = lawDao.findOne(lawId);
         if (law != null) {
             Map<String, Float> map = getTermAndRank(law.getContents());
-//            Map<String, Float> result = new LinkedHashMap<String, Float>();
-            List<Map.Entry<String, Float>> infoIds = new ArrayList<Map.Entry<String, Float>>(map.entrySet());
+            Map<String, Float> result = new LinkedHashMap<String, Float>();
             // 排序
-            Collections.sort(infoIds, new Comparator<Map.Entry<String, Float>>() {
-                public int compare(Map.Entry<String, Float> o1,
-                                   Map.Entry<String, Float> o2) {
-                    return (o1.getKey()).toString().compareTo(o2.getKey());
-                }
-            });
-            // for (Map.Entry<String, Float> entry : new MaxHeap<Map.Entry<String,
-            // Float>>(size,
-            // new Comparator<Map.Entry<String, Float>>() {
-            // @Override
-            // public int compare(Map.Entry<String, Float> o1,
-            // Map.Entry<String, Float> o2) {
-            // return o1.getValue()
-            // .compareTo(o2.getValue());
-            // }
-            // }).addAll(map.entrySet())
-            // .toList()) {
-            // result.put(entry.getKey(), entry.getValue());
-            // }
-            results.put("result", infoIds);
+            for (Map.Entry<String, Float> entry : new MaxHeap<Map.Entry<String, Float>>(size,
+                new Comparator<Map.Entry<String, Float>>() {
+                    @Override
+                    public int compare(Map.Entry<String, Float> o1,
+                                       Map.Entry<String, Float> o2) {
+                        return o1.getValue()
+                                 .compareTo(o2.getValue());
+                    }
+                }).addAll(map.entrySet())
+                  .toList()) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+            results.put("result", result);
             results.put("lawTitle", law.getName());
-            results.put("lawContent", law.getContents());
         } else {
             results.put("msg", "未找到法规");
         }

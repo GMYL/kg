@@ -1,8 +1,10 @@
 package hb.kg.wizard.controller.f;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.tomcat.jni.File;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +51,17 @@ public class GraphNodeFController extends BaseCRUDController<HBGraphBaseNode> {
                                        @PathVariable("size") Integer size) {
         ResponseBean responseBean = getReturn();
         responseBean.setData(graphNodeService.getTermAndRank(lawId, size));
+        return returnBean(responseBean);
+    }
+
+    /*
+     * 数据导出
+     */
+    @RequestMapping(value = "/downFileTxt", method = { RequestMethod.POST })
+    public ResponseBean createFileTxt(@RequestBody List<String> ids) {
+        ResponseBean responseBean = getReturn();
+        graphNodeService.createFileTxt(ids);
+        responseBean.setData("http://www.aqielu.cn/kg/static/download/download/laws.txt");
         return returnBean(responseBean);
     }
 }
