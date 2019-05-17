@@ -35,6 +35,8 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.util.CloseableIterator;
 import org.springframework.stereotype.Service;
 
+import com.hankcs.hanlp.summary.TextRankKeyword;
+
 import hb.kg.common.dao.BaseMongoDao;
 import hb.kg.common.service.BaseCRUDService;
 import hb.kg.common.util.algo.nlp.util.MaxHeap;
@@ -369,7 +371,10 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         JSONObject results = new JSONObject();
         HBLaw law = lawDao.findOne(lawId);
         if (law != null) {
-            Map<String, Float> map = getTermAndRank(law.getContents());
+//            Map<String, Float> map = getTermAndRank(law.getContents());
+            TextRankKeyword text=  new TextRankKeyword();
+            Map<String, Float> map = text.getTermAndRank(law.getContents());
+            TextRankKeyword.getKeywordList(law.getContents(), size);
             Map<String, Float> result = new LinkedHashMap<String, Float>();
             // 排序
             for (Map.Entry<String, Float> entry : new MaxHeap<Map.Entry<String, Float>>(size,
