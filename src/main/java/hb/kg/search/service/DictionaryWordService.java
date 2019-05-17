@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.apache.commons.collections4.MapUtils;
@@ -68,7 +67,7 @@ public class DictionaryWordService extends BaseCRUDService<HBDictionaryWord> {
      * 从词典中加载所有词，形成森林，注意可以重复加载 当后台对各个词做了修正之后，这里可以相应调整 INFO 11-03
      * 改为异步加载，解决系统启动时加载速度过慢的问题
      */
-    @PostConstruct
+//    @PostConstruct
     public String init() {
         String resultStr = "载入词典开始执行";
         new Thread() {
