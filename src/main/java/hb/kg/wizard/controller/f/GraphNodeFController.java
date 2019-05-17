@@ -59,7 +59,7 @@ public class GraphNodeFController extends BaseCRUDController<HBGraphBaseNode> {
     public ResponseBean createFileTxt(@RequestBody List<String> ids) {
         ResponseBean responseBean = getReturn();
         graphNodeService.createFileTxt(ids);
-        responseBean.setData("http://www.aqielu.cn/kg/static/download/download/laws.txt");
+        responseBean.setData("http://www.aqielu.cn/kg/static/download/laws.txt");
         return returnBean(responseBean);
     }
 }
