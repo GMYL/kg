@@ -10,7 +10,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -348,7 +347,7 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
             try (FileWriter writer = new FileWriter(writeName);
                     BufferedWriter out = new BufferedWriter(writer)) {
                 for (String id : ids) {
-                    JSONObject results = getTermAndRank(id, 5);
+                    JSONObject results = getTermAndRank(id, 10);
                     out.write(results.toJSONString());
                     out.write("\r\n"); // \r\n即为换行
                 }
