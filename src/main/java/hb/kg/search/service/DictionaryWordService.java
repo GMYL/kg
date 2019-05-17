@@ -1,9 +1,6 @@
 package hb.kg.search.service;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -13,7 +10,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -23,8 +19,6 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.util.CloseableIterator;
 import org.springframework.stereotype.Service;
 
 import hb.kg.common.dao.BaseDao;
@@ -36,9 +30,7 @@ import hb.kg.common.util.algo.nlp.trie.NlpWord;
 import hb.kg.common.util.encrypt.RegexUtils;
 import hb.kg.common.util.set.HBCollectionUtil;
 import hb.kg.search.bean.enums.HBDictionaryExcelType;
-import hb.kg.search.bean.mongo.HBDictionaryStopWord;
 import hb.kg.search.bean.mongo.HBDictionaryWord;
-import hb.kg.search.bean.mongo.HBQuestionStandard;
 import hb.kg.search.dao.mongo.DictionaryWordDao;
 
 @Service
@@ -61,7 +53,7 @@ public class DictionaryWordService extends BaseCRUDService<HBDictionaryWord> {
      * 从词典中加载所有词，形成森林，注意可以重复加载 当后台对各个词做了修正之后，这里可以相应调整 INFO 11-03
      * 改为异步加载，解决系统启动时加载速度过慢的问题
      */
-//    @PostConstruct
+    // @PostConstruct
     public String init() {
         String resultStr = "载入词典开始执行";
         new Thread() {
@@ -92,47 +84,6 @@ public class DictionaryWordService extends BaseCRUDService<HBDictionaryWord> {
             };
         }.start();
         return resultStr;
-    }
-
-    /**
-     * 更新每个词在所有问题标题中出现的次数
-     */
-    public String refreshOccurNum() {
-        try {
-            Collection<HBDictionaryWord> words = dictionaryWordDao.findAll(HBCollectionUtil.getMapSplit("excelType",
-                                                                                                        HBDictionaryExcelType.WENDA.getName()));
-            HashMap<String, Integer> allWords = new HashMap<>();
-            words.stream().forEach(word -> {
-                allWords.put(word.getWord(), 0);
-            });
-            CloseableIterator<HBQuestionStandard> itr = mongoTemplate.stream(Query.query(Criteria.where("valid")
-                                                                                                 .is(true)),
-                                                                             HBQuestionStandard.class);
-            while (itr.hasNext()) {
-                try {
-                    HBQuestionStandard questand = itr.next();
-                    if (questand.getTitle() != null) {
-                        getWordMap(questand.getTitle()).entrySet().stream().forEach(entry -> {
-                            NlpWord word = entry.getValue();
-                            Integer occurNum = allWords.get(word.getName());
-                            if (occurNum != null) {
-                                allWords.put(word.getName(), occurNum + 1);
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                }
-            }
-            allWords.entrySet().stream().forEach(entry -> {
-                Update update = Update.update("occurNum", entry.getValue());
-                mongoTemplate.updateFirst(Query.query(Criteria.where("word").is(entry.getKey())),
-                                          update,
-                                          HBDictionaryWord.class);
-            });
-            return "更新每个词在所有问题标题中出现的次数成功";
-        } catch (Exception e) {
-            return "更新每个词在所有问题标题中出现的次数失败";
-        }
     }
 
     /**
@@ -461,86 +412,6 @@ public class DictionaryWordService extends BaseCRUDService<HBDictionaryWord> {
             }
         }
         return false;
-    }
-
-    private AtomicBoolean onGenerate = new AtomicBoolean(false);
-
-    public String UpdateDict(String path) {
-        if (!onGenerate.get()) {
-            onGenerate.set(true);
-            File file = new File(path);
-            if (file.exists()) {
-                String[] filenames = file.list();// 取得当前目录下所有文件和文件夹
-                for (String filename : filenames) {
-                    switch (filename) {
-                    case "dict.txt":
-                        write(path, filename);
-                        break;
-                    case "qadict.txt":
-                        write(path, filename);
-                        break;
-                    case "stopdict.txt":
-                        write(path, filename);
-                        break;
-                    case "qastopdict.txt":
-                        write(path, filename);
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                onGenerate.set(false);
-                return path + "词库更新完毕";
-            } else {
-                return path + "**路径错误***";
-            }
-        } else {
-            return "词库正在更新，请不要重复点击";
-        }
-    }
-
-    public void write(String path,
-                      String filename) {
-        try {
-            BufferedOutputStream bufferedOutputStream = null;
-            FileOutputStream fileO = new FileOutputStream(path + filename);
-            bufferedOutputStream = new BufferedOutputStream(fileO);
-            String newLine = System.getProperty("line.separator");// 回车多环境支持
-            List<HBDictionaryWord> dictionaryWords = new ArrayList<>();
-            List<HBDictionaryStopWord> dictionaryStopWords = new ArrayList<>();
-            if (filename.equals("dict.txt")) {// 法规文章扩展词添加
-                dictionaryWords = mongoTemplate.find(new Query(Criteria.where("excelType")
-                                                                       .ne(HBDictionaryExcelType.WENDA.getName())),
-                                                     HBDictionaryWord.class);
-            }
-            if (filename.equals("qadict.txt")) {// 问答扩展词添加
-                dictionaryWords = mongoTemplate.find(new Query(Criteria.where("excelType")
-                                                                       .is(HBDictionaryExcelType.WENDA.getName())),
-                                                     HBDictionaryWord.class);
-            }
-            if (filename.equals("stopdict.txt")) {// 法规文章停用词添加
-                dictionaryStopWords = mongoTemplate.find(new Query(Criteria.where("excelType")
-                                                                           .ne(HBDictionaryExcelType.WENDA.getName())),
-                                                         HBDictionaryStopWord.class);
-            }
-            if (filename.equals("qastopdict.txt")) {// 问答停用词添加
-                dictionaryStopWords = mongoTemplate.find(new Query(Criteria.where("excelType")
-                                                                           .is(HBDictionaryExcelType.WENDA.getName())),
-                                                         HBDictionaryStopWord.class);
-            }
-            for (HBDictionaryWord dict : dictionaryWords) {// 写入扩展词
-                bufferedOutputStream.write(dict.getWord().getBytes("utf-8"));
-                bufferedOutputStream.write(newLine.getBytes()); // 写入回车
-            }
-            for (HBDictionaryStopWord stopdict : dictionaryStopWords) {// 写入停用词
-                bufferedOutputStream.write(stopdict.getWord().getBytes("utf-8"));
-                bufferedOutputStream.write(newLine.getBytes()); // 写入回车
-            }
-            logger.info(path + filename + "***更新成功***");
-            bufferedOutputStream.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     /**

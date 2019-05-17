@@ -40,7 +40,6 @@ public class DictionaryWordBController extends BaseCRUDController<HBDictionaryWo
     @Autowired
     private DictionaryWordService dictionaryWordService;
 
-
     @Override
     protected BaseCRUDService<HBDictionaryWord> getService() {
         return dictionaryWordService;
@@ -79,19 +78,6 @@ public class DictionaryWordBController extends BaseCRUDController<HBDictionaryWo
     }
 
     /**
-     * 手动触发更新词典和问答索引
-     */
-    @ApiOperation(value = "手动触发更新词典和问答索引", notes = "手动触发更新词典和问答索引", produces = "application/json")
-    @ApiImplicitParams({ @ApiImplicitParam(paramType = "header", dataType = "String", name = "hbjwtauth", value = "用户权限验证", required = true) })
-    @RequestMapping(value = "/upesqa", method = { RequestMethod.GET })
-    public ResponseBean generateBackup() {
-        ResponseBean responseBean = getReturn();
-        String updict = dictionaryWordService.UpdateDict(mainServer.conf().getDictLoc());
-        responseBean.setData(updict);
-        return returnBean(responseBean);
-    }
-
-    /**
      * 手动触发更新内存词典树
      */
     @ApiOperation(value = "手动触发更新内存词典树", notes = "手动触发更新内存词典树", produces = "application/json")
@@ -100,19 +86,6 @@ public class DictionaryWordBController extends BaseCRUDController<HBDictionaryWo
     public ResponseBean refreshDictionary() {
         ResponseBean responseBean = getReturn();
         dictionaryWordService.init();
-        responseBean.setData("更新成功");
-        return returnBean(responseBean);
-    }
-
-    /**
-     * 手动触发更新每个分词在所有问题中出现的次数
-     */
-    @ApiOperation(value = "手动触发更新每个分词在所有问题中出现的次数", notes = "手动触发更新每个分词在所有问题中出现的次数", produces = "application/json")
-    @ApiImplicitParams({ @ApiImplicitParam(paramType = "header", dataType = "String", name = "hbjwtauth", value = "用户权限验证", required = true) })
-    @RequestMapping(value = "/refreshOccurNum", method = { RequestMethod.GET })
-    public ResponseBean refreshOccurNum() {
-        ResponseBean responseBean = getReturn();
-        dictionaryWordService.refreshOccurNum();
         responseBean.setData("更新成功");
         return returnBean(responseBean);
     }
@@ -191,20 +164,24 @@ public class DictionaryWordBController extends BaseCRUDController<HBDictionaryWo
         }
         return returnBean(responseBean);
     }
-
-//    @ApiOperation(value = "返回机器人智能问答生成的term", notes = "返回机器人智能问答生成的term", produces = "application/json")
-//    @ApiImplicitParams({ @ApiImplicitParam(paramType = "header", dataType = "String", name = "hbjwtauth", value = "用户权限验证") })
-//    @RequestMapping(value = "/termAnalysis", method = { RequestMethod.GET })
-//    @ResponseStatus(HttpStatus.OK)
-//    public ResponseBean termAnalysisBasic(@ApiParam(value = "问题", required = true) @RequestParam("question") String question,
-//                                          @ApiParam(value = "扩展", required = true) @RequestParam("expand") Boolean expand) {
-//        ResponseBean responseBean = getReturn();
-//        if (expand) {
-//            responseBean.setData(robotService.getQuestionTermsWithExpand(question));
-//        } else {
-//            responseBean.setData(new ArrayList<>(robotService.getQuestionTermsBasic(question)
-//                                                             .values()));
-//        }
-//        return returnBean(responseBean);
-//    }
+    // @ApiOperation(value = "返回机器人智能问答生成的term", notes = "返回机器人智能问答生成的term",
+    // produces = "application/json")
+    // @ApiImplicitParams({ @ApiImplicitParam(paramType = "header", dataType =
+    // "String", name = "hbjwtauth", value = "用户权限验证") })
+    // @RequestMapping(value = "/termAnalysis", method = { RequestMethod.GET })
+    // @ResponseStatus(HttpStatus.OK)
+    // public ResponseBean termAnalysisBasic(@ApiParam(value = "问题", required =
+    // true) @RequestParam("question") String question,
+    // @ApiParam(value = "扩展", required = true) @RequestParam("expand") Boolean
+    // expand) {
+    // ResponseBean responseBean = getReturn();
+    // if (expand) {
+    // responseBean.setData(robotService.getQuestionTermsWithExpand(question));
+    // } else {
+    // responseBean.setData(new
+    // ArrayList<>(robotService.getQuestionTermsBasic(question)
+    // .values()));
+    // }
+    // return returnBean(responseBean);
+    // }
 }
