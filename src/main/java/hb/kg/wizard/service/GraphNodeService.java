@@ -1,11 +1,11 @@
 package hb.kg.wizard.service;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -346,11 +346,11 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         try {
             File writeName = new File("src/main/resources/download/laws.txt"); // 相对路径，如果没有则要建立一个新的.txt文件
             writeName.createNewFile(); // 创建新文件,有同名的文件的话直接覆盖
-            try (FileWriter writer = new FileWriter(writeName);
-                    BufferedWriter out = new BufferedWriter(writer)) {
+            try (FileOutputStream writer = new FileOutputStream(writeName);
+                    OutputStreamWriter out = new OutputStreamWriter(writer, "UTF-8")) {
                 for (String id : ids) {
                     JSONObject results = getTermAndRank(id, 10);
-                    out.write(results.toJSONString());
+                    out.write(formatToJson(results.toJSONString()));
                     out.write("\r\n"); // \r\n即为换行
                 }
                 out.flush(); // 把缓存区内容压入文件
@@ -358,6 +358,46 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private String getLevelStr(int level) {
+        StringBuffer lb = new StringBuffer();
+        for (int levelTmp = 0; levelTmp < level; levelTmp++) {
+            lb.append("\t");
+        }
+        return String.valueOf(lb);
+    }
+
+    public String formatToJson(String region) {
+        int level = 0;
+        StringBuffer preBuffer = new StringBuffer();
+        for (int i = 0; i < region.length(); i++) {
+            char c = region.charAt(i);
+            if (level > 0 && '\n' == preBuffer.charAt(preBuffer.length() - 1)) {
+                preBuffer.append(getLevelStr(level));
+            }
+            switch (c) {
+            case '{':
+            case '[':
+                preBuffer.append(c + "\n");
+                level++;
+                break;
+            case ',':
+                preBuffer.append(c + "\n");
+                break;
+            case '}':
+            case ']':
+                preBuffer.append("\n");
+                level--;
+                preBuffer.append(getLevelStr(level));
+                preBuffer.append(c);
+                break;
+            default:
+                preBuffer.append(c);
+                break;
+            }
+        }
+        return String.valueOf(preBuffer);
     }
 
     /**
@@ -371,22 +411,22 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
         JSONObject results = new JSONObject();
         HBLaw law = lawDao.findOne(lawId);
         if (law != null) {
-//            Map<String, Float> map = getTermAndRank(law.getContents());
-            TextRankKeyword text=  new TextRankKeyword();
+            // Map<String, Float> map = getTermAndRank(law.getContents());
+            TextRankKeyword text = new TextRankKeyword();
             Map<String, Float> map = text.getTermAndRank(law.getContents());
             TextRankKeyword.getKeywordList(law.getContents(), size);
             Map<String, Float> result = new LinkedHashMap<String, Float>();
             // 排序
             for (Map.Entry<String, Float> entry : new MaxHeap<Map.Entry<String, Float>>(size,
-                new Comparator<Map.Entry<String, Float>>() {
-                    @Override
-                    public int compare(Map.Entry<String, Float> o1,
-                                       Map.Entry<String, Float> o2) {
-                        return o1.getValue()
-                                 .compareTo(o2.getValue());
-                    }
-                }).addAll(map.entrySet())
-                  .toList()) {
+                                                                                        new Comparator<Map.Entry<String, Float>>() {
+                                                                                            @Override
+                                                                                            public int compare(Map.Entry<String, Float> o1,
+                                                                                                               Map.Entry<String, Float> o2) {
+                                                                                                return o1.getValue()
+                                                                                                         .compareTo(o2.getValue());
+                                                                                            }
+                                                                                        }).addAll(map.entrySet())
+                                                                                          .toList()) {
                 result.put(entry.getKey(), entry.getValue());
             }
             results.put("result", result);

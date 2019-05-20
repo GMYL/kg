@@ -57,7 +57,6 @@ public class GraphNodeFController extends BaseCRUDController<HBGraphBaseNode> {
      */
     @RequestMapping(value = "/downFileTxt", method = { RequestMethod.POST })
     public ResponseBean createFileTxt(@RequestBody List<String> ids) {
-        
         ResponseBean responseBean = getReturn();
         graphNodeService.createFileTxt(ids);
         responseBean.setData("http://www.aqielu.cn/kg/static/download/laws.txt");

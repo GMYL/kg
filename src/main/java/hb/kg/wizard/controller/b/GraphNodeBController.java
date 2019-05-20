@@ -166,4 +166,15 @@ public class GraphNodeBController extends BaseCRUDController<HBGraphBaseNode> {
                 : clearAll));
         return returnBean(responseBean);
     }
+
+    /*
+     * 数据导出
+     */
+    @RequestMapping(value = "/downFileTxt", method = { RequestMethod.POST })
+    public ResponseBean createFileTxt(@RequestBody List<String> ids) {
+        ResponseBean responseBean = getReturn();
+        graphNodeService.createFileTxt(ids);
+        responseBean.setData("http://www.aqielu.cn/kg/static/download/laws.txt");
+        return returnBean(responseBean);
+    }
 }
