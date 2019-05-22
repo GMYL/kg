@@ -9,6 +9,7 @@ settings.xml
 *.gz
 /src/main/webapp/swagger-ui
 /src/main/webapp/pay
+/src/main/resources/download
 /src/test/java/hb/bk/tmp
 webapp*
 /.springBeans

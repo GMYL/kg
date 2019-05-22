@@ -418,15 +418,15 @@ public class GraphNodeService extends BaseCRUDService<HBGraphBaseNode> {
             Map<String, Float> result = new LinkedHashMap<String, Float>();
             // 排序
             for (Map.Entry<String, Float> entry : new MaxHeap<Map.Entry<String, Float>>(size,
-                                                                                        new Comparator<Map.Entry<String, Float>>() {
-                                                                                            @Override
-                                                                                            public int compare(Map.Entry<String, Float> o1,
-                                                                                                               Map.Entry<String, Float> o2) {
-                                                                                                return o1.getValue()
-                                                                                                         .compareTo(o2.getValue());
-                                                                                            }
-                                                                                        }).addAll(map.entrySet())
-                                                                                          .toList()) {
+                new Comparator<Map.Entry<String, Float>>() {
+                    @Override
+                    public int compare(Map.Entry<String, Float> o1,
+                                       Map.Entry<String, Float> o2) {
+                        return o1.getValue()
+                                 .compareTo(o2.getValue());
+                    }
+                }).addAll(map.entrySet())
+                  .toList()) {
                 result.put(entry.getKey(), entry.getValue());
             }
             results.put("result", result);
