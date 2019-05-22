@@ -1,4 +1,6 @@
-/target/
+/target
+/target/classes
+/target/test-classes
 .settings
 settings.xml
 .idea
